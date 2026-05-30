@@ -1,49 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Trade Analyst</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 100%; height: 100%; background: #060608; overflow: hidden; }
-    body { display: flex; align-items: center; justify-content: center; }
-    :root {
-      --bg: #08090C; --bg-1: #0D0F14; --bg-2: #111318; --bg-3: #181B22; --bg-4: #20242E; --card: #0E1016;
-      --border: rgba(255,255,255,0.07); --border-strong: rgba(255,255,255,0.12);
-      --text: #F0F2F7; --text-2: #9BA3B8; --text-3: #555E72;
-      --brand: #7C6CFF; --brand-2: #9B8FFF;
-      --brand-grad: linear-gradient(135deg,#8B7CFF,#6E8BFF);
-      --brand-glow: rgba(124,108,255,0.45);
-      --bull: #25D07C; --bull-dim: rgba(37,208,124,0.12); --bull-line: rgba(37,208,124,0.28);
-      --bear: #FF4D5E; --bear-dim: rgba(255,77,94,0.12); --bear-line: rgba(255,77,94,0.28);
-      --gold: #F0C268;
-      --display: 'Space Grotesk', sans-serif;
-      --ui: 'Plus Jakarta Sans', sans-serif;
-      --mono: 'JetBrains Mono', monospace;
-    }
-    @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-    @keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes scaleIn { from{opacity:0;transform:scale(0.94)} to{opacity:1;transform:scale(1)} }
-    @keyframes spin    { to{transform:rotate(360deg)} }
-    @keyframes pulse   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.05)} }
-    @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
-    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-    #scaler { transform-origin:center center; display:flex; align-items:center; justify-content:center; }
-    .scrollarea { overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
-    .scrollarea::-webkit-scrollbar { display:none; }
-    input,textarea,button,select { font-family:inherit; -webkit-tap-highlight-color:transparent; }
-    input[type="file"] { display:none; }
-  </style>
-</head>
-<body>
-  <div id="scaler"><div id="root"></div></div>
-  <script>
 /* ds.jsx — AI Trade Analyst design system primitives.
    Tokens live as CSS vars in the host HTML. Exports primitives to window. */
 
@@ -8747,15 +8701,3 @@ function App() {
   }));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));
-  </script>
-  <script>
-    function scalePhone() {
-      var pad=24, vw=window.innerWidth, vh=window.innerHeight;
-      var scale=Math.min((vw-pad)/402,(vh-pad)/874,1.08);
-      document.getElementById("scaler").style.transform="scale("+scale+")";
-    }
-    scalePhone();
-    window.addEventListener("resize", scalePhone);
-  </script>
-</body>
-</html>

@@ -234,7 +234,7 @@ function AuthScreen({ onDone, nav }) {
           </div>
           <h1 style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 700, color: 'var(--text)', margin: '22px 0 8px', letterSpacing: -0.5 }}>Anthropic API key</h1>
           <p style={{ fontFamily: 'var(--ui)', fontSize: 14.5, color: 'var(--text-2)', margin: 0, lineHeight: 1.55 }}>
-            The app uses Claude Vision to analyze your chart images. Paste your Anthropic API key below — it's stored only on this device.
+            The app uses Claude Vision to analyze your chart images. Paste your Anthropic API key below — stored only on this device.
           </p>
 
           <div style={{ marginTop: 28, position: 'relative' }}>
@@ -281,7 +281,7 @@ function AuthScreen({ onDone, nav }) {
           {mode === 'email' ? 'Your email' : 'Welcome'}
         </h1>
         <p style={{ fontFamily: 'var(--ui)', fontSize: 15, color: 'var(--text-2)', margin: 0, lineHeight: 1.5 }}>
-          {mode === 'email' ? 'We'll send a magic link to sign you in.' : 'Sign in and set up your Anthropic API key to start analyzing charts.'}
+          {mode === 'email' ? "We'll send a magic link to sign you in." : 'Sign in and set up your Anthropic API key to start analyzing charts.'}
         </p>
 
         {mode === 'choices' ? (
