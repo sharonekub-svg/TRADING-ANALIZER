@@ -270,7 +270,7 @@ function ProfileScreen({ nav }) {
 
         {/* API Key section */}
         <div>
-          <SectionHead title="Anthropic API key" />
+          <SectionHead title="Google Gemini API key" />
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: apiKey ? 'var(--bull-dim)' : 'var(--bg-3)', border: `1px solid ${apiKey ? 'var(--bull-line)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -281,7 +281,7 @@ function ProfileScreen({ nav }) {
                   {apiKey ? 'Key connected' : 'No key set'}
                 </div>
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                  {apiKey ? maskedKey : 'Required for live AI analysis'}
+                  {apiKey ? maskedKey : 'Free — get key at aistudio.google.com'}
                 </div>
               </div>
               {apiKey && (
@@ -297,7 +297,7 @@ function ProfileScreen({ nav }) {
                 type={visible ? 'text' : 'password'}
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
-                placeholder="sk-ant-api03-..."
+                placeholder="AIzaSy..."
                 style={{ width: '100%', height: 48, borderRadius: 12, background: 'var(--bg-2)', border: '1px solid var(--border-strong)', color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 13, padding: '0 48px 0 16px', outline: 'none' }}
               />
               <button onClick={() => setVisible(!visible)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
@@ -309,7 +309,7 @@ function ProfileScreen({ nav }) {
               variant={saved ? 'bull' : 'primary'}
               full
               onClick={saveKey}
-              disabled={!apiKey.trim() || !apiKey.startsWith('sk-ant-')}
+              disabled={!apiKey.trim() || !apiKey.startsWith('AIza')}
             >
               {saved ? '✓ API key saved' : 'Save key'}
             </Button>

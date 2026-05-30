@@ -214,7 +214,7 @@ function AuthScreen({ onDone, nav }) {
   const [saved, setSaved] = uS(false);
 
   const saveKey = () => {
-    if (apiKey.trim().startsWith('sk-ant-')) {
+    if (apiKey.trim().startsWith('AIza')) {
       window.DATA.ApiKey.set(apiKey.trim());
       setSaved(true);
       setTimeout(() => onDone(), 800);
@@ -232,9 +232,9 @@ function AuthScreen({ onDone, nav }) {
           <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--brand-grad)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 28px -8px var(--brand-glow)' }}>
             <Icon name="key" size={28} color="#fff" sw={2} />
           </div>
-          <h1 style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 700, color: 'var(--text)', margin: '22px 0 8px', letterSpacing: -0.5 }}>Anthropic API key</h1>
+          <h1 style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 700, color: 'var(--text)', margin: '22px 0 8px', letterSpacing: -0.5 }}>Google AI Studio key</h1>
           <p style={{ fontFamily: 'var(--ui)', fontSize: 14.5, color: 'var(--text-2)', margin: 0, lineHeight: 1.55 }}>
-            The app uses Claude Vision to analyze your chart images. Paste your Anthropic API key below — stored only on this device.
+            The app uses Gemini Vision (free tier) to analyze your chart images. Get a free key at aistudio.google.com — stored only on this device.
           </p>
 
           <div style={{ marginTop: 28, position: 'relative' }}>
@@ -242,19 +242,19 @@ function AuthScreen({ onDone, nav }) {
               type={keyVisible ? 'text' : 'password'}
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
-              placeholder="sk-ant-api03-..."
-              style={{ width: '100%', height: 56, borderRadius: 14, background: 'var(--bg-2)', border: `1px solid ${apiKey && !apiKey.startsWith('sk-ant-') ? 'var(--bear-line)' : 'var(--border-strong)'}`, color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 13, padding: '0 52px 0 18px', outline: 'none' }}
+              placeholder="AIzaSy..."
+              style={{ width: '100%', height: 56, borderRadius: 14, background: 'var(--bg-2)', border: `1px solid ${apiKey && !apiKey.startsWith('AIza') ? 'var(--bear-line)' : 'var(--border-strong)'}`, color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 13, padding: '0 52px 0 18px', outline: 'none' }}
             />
             <button onClick={() => setKeyVisible(!keyVisible)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
               <Icon name="eye" size={18} color="var(--text-3)" />
             </button>
           </div>
 
-          {apiKey && !apiKey.startsWith('sk-ant-') && (
-            <div style={{ fontFamily: 'var(--ui)', fontSize: 12, color: 'var(--bear)', marginTop: 8 }}>Keys start with sk-ant-</div>
+          {apiKey && !apiKey.startsWith('AIza') && (
+            <div style={{ fontFamily: 'var(--ui)', fontSize: 12, color: 'var(--bear)', marginTop: 8 }}>Keys start with AIza</div>
           )}
 
-          <Button size="lg" full onClick={saveKey} disabled={!apiKey.startsWith('sk-ant-')} style={{ marginTop: 18 }}>
+          <Button size="lg" full onClick={saveKey} disabled={!apiKey.startsWith('AIza')} style={{ marginTop: 18 }}>
             {saved ? '✓ Saved — entering app…' : 'Save & continue'}
           </Button>
 
@@ -265,7 +265,7 @@ function AuthScreen({ onDone, nav }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '14px 0 0' }}>
             <Icon name="info" size={14} color="var(--text-3)" style={{ marginTop: 1, flexShrink: 0 }} />
             <span style={{ fontFamily: 'var(--ui)', fontSize: 11.5, color: 'var(--text-3)', lineHeight: 1.5 }}>
-              Your key is stored locally in this browser only and never sent anywhere except to Anthropic's API for chart analysis.
+              Your key is stored locally in this browser only and never sent anywhere except to Google's Gemini API for chart analysis.
             </span>
           </div>
         </div>

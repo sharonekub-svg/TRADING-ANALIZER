@@ -1,6 +1,16 @@
-/* screens-upload.jsx — Manual chart form + Loading screen (free, no AI) */
+/* screens-upload.jsx — Image upload (Gemini Vision) + Manual chart form */
 
 function UploadScreen({ nav }) {
+  const [mode, setMode] = uS('image'); // 'image' | 'form'
+
+  // Image upload state
+  const [imgFile, setImgFile] = uS(null);
+  const [imgPreview, setImgPreview] = uS(null);
+  const [imgBase64, setImgBase64] = uS(null);
+  const [imgMime, setImgMime] = uS(null);
+  const fileInputRef = uR(null);
+
+  // Shared
   const [tf, setTf] = uS('4H');
   const [asset, setAsset] = uS('');
   const [price, setPrice] = uS('');
@@ -40,6 +50,29 @@ function UploadScreen({ nav }) {
   const [pd, setPd] = uS('equilibrium');
 
   const TFS = ['1m','5m','15m','30m','1H','4H','1D','1W','1M'];
+
+  function handleImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    setImgFile(file);
+    setImgPreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = e => {
+      const dataUrl = e.target.result;
+      const base64 = dataUrl.split(',')[1];
+      setImgBase64(base64);
+      setImgMime(file.type);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function onAnalyzeImage() {
+    window.PENDING_ANALYSIS = {
+      timeframe: tf,
+      imageBase64: imgBase64,
+      mimeType: imgMime,
+    };
+    nav.replace('loading', { pendingKey: Date.now() });
+  }
 
   function onAnalyze() {
     const msDir = bos === 'bullish' || choch === 'bullish' || hhhl ? 'bullish'
@@ -127,6 +160,8 @@ function UploadScreen({ nav }) {
               : choch !== 'none' ? (choch === 'bullish' ? 'bullish_choch' : 'bearish_choch')
               : 'range';
 
+  const hasKey = window.DATA.ApiKey.hasKey();
+
   return (
     <div style={{ minHeight: '100%', paddingBottom: 100 }}>
       {/* Header */}
@@ -136,10 +171,108 @@ function UploadScreen({ nav }) {
         </button>
         <div>
           <div style={{ fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 18, color: 'var(--text)' }}>Chart Analysis</div>
-          <div style={{ fontFamily: 'var(--ui)', fontSize: 12, color: 'var(--text-3)' }}>103 strategies · free · no AI needed</div>
+          <div style={{ fontFamily: 'var(--ui)', fontSize: 12, color: 'var(--text-3)' }}>103 strategies · free</div>
         </div>
       </div>
 
+      {/* Mode tabs */}
+      <div style={{ padding: '14px 16px 0' }}>
+        <div style={{ display: 'flex', background: 'var(--bg-2)', borderRadius: 14, padding: 3, gap: 3, border: '1px solid var(--border)' }}>
+          {[
+            { v: 'image', label: '📷  Upload Image', sub: 'Gemini Vision — free' },
+            { v: 'form',  label: '✏️  Manual Form',  sub: 'Algorithm only — free' },
+          ].map(tab => {
+            const on = mode === tab.v;
+            return (
+              <button key={tab.v} onClick={() => setMode(tab.v)} style={{
+                flex: 1, height: 52, borderRadius: 11, border: 'none', cursor: 'pointer',
+                background: on ? 'var(--brand-grad)' : 'transparent',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                boxShadow: on ? '0 4px 14px -4px var(--brand-glow)' : 'none',
+                transition: 'all .18s',
+              }}>
+                <span style={{ fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 13, color: on ? '#fff' : 'var(--text-2)' }}>{tab.label}</span>
+                <span style={{ fontFamily: 'var(--ui)', fontSize: 10, color: on ? 'rgba(255,255,255,0.72)' : 'var(--text-3)' }}>{tab.sub}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── IMAGE UPLOAD MODE ── */}
+      {mode === 'image' && (
+        <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {!hasKey && (
+            <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(240,194,104,0.1)', border: '1px solid rgba(240,194,104,0.3)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Icon name="alert" size={16} color="var(--gold)" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 13, color: 'var(--gold)' }}>No API key set</div>
+                <div style={{ fontFamily: 'var(--ui)', fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Add a free Google AI Studio key in Profile to use image analysis.</div>
+              </div>
+              <button onClick={() => nav.go('profile')} style={{ height: 30, padding: '0 12px', borderRadius: 8, background: 'rgba(240,194,104,0.2)', border: '1px solid rgba(240,194,104,0.35)', color: 'var(--gold)', fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 11.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                Add key
+              </button>
+            </div>
+          )}
+
+          {/* Timeframe */}
+          <div style={{ background: 'var(--bg-2)', borderRadius: 16, border: '1px solid var(--border)', padding: '14px 14px' }}>
+            <div style={{ fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 11, color: 'var(--text-3)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>Timeframe</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {TFS.map(t => (
+                <button key={t} onClick={() => setTf(t)} style={{
+                  height: 32, padding: '0 12px', borderRadius: 10,
+                  background: tf === t ? 'var(--brand-grad)' : 'var(--bg-3)',
+                  border: tf === t ? 'none' : '1px solid var(--border)',
+                  color: tf === t ? '#fff' : 'var(--text-3)',
+                  fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 12.5,
+                  cursor: 'pointer',
+                  boxShadow: tf === t ? '0 4px 12px -4px var(--brand-glow)' : 'none',
+                  transition: 'all .15s',
+                }}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Drop zone */}
+          <div
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => { e.preventDefault(); handleImageFile(e.dataTransfer.files[0]); }}
+            style={{
+              borderRadius: 18, border: `2px dashed ${imgPreview ? 'var(--brand)' : 'var(--border-strong)'}`,
+              background: imgPreview ? 'rgba(124,108,255,0.06)' : 'var(--bg-2)',
+              minHeight: 180, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all .2s', overflow: 'hidden', position: 'relative',
+            }}
+          >
+            {imgPreview ? (
+              <>
+                <img src={imgPreview} alt="chart" style={{ width: '100%', objectFit: 'contain', maxHeight: 240, borderRadius: 16 }} />
+                <div style={{ position: 'absolute', bottom: 8, right: 8, padding: '4px 10px', borderRadius: 8, background: 'rgba(37,208,124,0.9)', fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 11, color: '#fff' }}>
+                  ✓ Ready
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ width: 56, height: 56, borderRadius: 18, background: 'var(--bg-3)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                  <Icon name="upload" size={26} color="var(--text-3)" />
+                </div>
+                <div style={{ fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>Tap to upload chart</div>
+                <div style={{ fontFamily: 'var(--ui)', fontSize: 12.5, color: 'var(--text-3)', marginTop: 6 }}>PNG, JPG, WebP · TradingView screenshot</div>
+              </>
+            )}
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageFile(e.target.files[0])} />
+
+          <div style={{ fontFamily: 'var(--ui)', fontSize: 11, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.5 }}>
+            Gemini Vision reads your chart image automatically · 15 req/min free
+          </div>
+        </div>
+      )}
+
+      {/* ── MANUAL FORM MODE ── */}
+      {mode === 'form' && (
       <div style={{ padding: '16px 16px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
         {/* Asset & Price */}
@@ -391,19 +524,36 @@ function UploadScreen({ nav }) {
         </div>
 
       </div>
+      )} {/* end mode === 'form' */}
 
       {/* Sticky Analyze button */}
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 402, padding: '12px 20px 32px', background: 'linear-gradient(to top, var(--bg) 60%, transparent)', zIndex: 30 }}>
-        <button onClick={onAnalyze} style={{
-          width: '100%', height: 52, borderRadius: 16,
-          background: 'var(--brand-grad)', border: 'none', color: '#fff',
-          fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 16,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          boxShadow: '0 10px 28px -8px var(--brand-glow)', transition: 'all .2s',
-        }}>
-          <Icon name="sparkles" size={19} color="#fff" />
-          Run 103 Strategies — Free
-        </button>
+        {mode === 'image' ? (
+          <button onClick={onAnalyzeImage} disabled={!imgBase64 || !hasKey} style={{
+            width: '100%', height: 52, borderRadius: 16,
+            background: imgBase64 && hasKey ? 'var(--brand-grad)' : 'var(--bg-3)',
+            border: 'none', color: imgBase64 && hasKey ? '#fff' : 'var(--text-3)',
+            fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 16,
+            cursor: imgBase64 && hasKey ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            boxShadow: imgBase64 && hasKey ? '0 10px 28px -8px var(--brand-glow)' : 'none',
+            transition: 'all .2s',
+          }}>
+            <Icon name="sparkles" size={19} color={imgBase64 && hasKey ? '#fff' : 'var(--text-3)'} />
+            {!hasKey ? 'Add API key to analyze' : !imgBase64 ? 'Upload a chart first' : 'Analyze with Gemini — Free'}
+          </button>
+        ) : (
+          <button onClick={onAnalyze} style={{
+            width: '100%', height: 52, borderRadius: 16,
+            background: 'var(--brand-grad)', border: 'none', color: '#fff',
+            fontFamily: 'var(--ui)', fontWeight: 700, fontSize: 16,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            boxShadow: '0 10px 28px -8px var(--brand-glow)', transition: 'all .2s',
+          }}>
+            <Icon name="sparkles" size={19} color="#fff" />
+            Run 103 Strategies — Free
+          </button>
+        )}
       </div>
     </div>
   );
@@ -479,7 +629,7 @@ function LoadingScreen({ nav, pendingKey }) {
           clearInterval(progTimer);
           clearInterval(countTimer);
           setPhase(4);
-          setErrorMsg('No API key set. Go to Profile → API Key to add your Anthropic key.');
+          setErrorMsg('No API key set. Go to Profile → API Key to add your free Google AI Studio key.');
           return;
         }
         analysis = await window.ENGINE.analyzeChart(pending.imageBase64, pending.mimeType, apiKey, pending.timeframe);
@@ -499,8 +649,8 @@ function LoadingScreen({ nav, pendingKey }) {
     } catch (err) {
       setPhase(4);
       const msg = err?.message || String(err);
-      if (msg.includes('401') || msg.includes('authentication')) {
-        setErrorMsg('Invalid API key. Check your Anthropic key in Profile settings.');
+      if (msg.includes('401') || msg.includes('authentication') || msg.includes('API_KEY_INVALID')) {
+        setErrorMsg('Invalid API key. Check your Google AI Studio key in Profile settings.');
       } else if (msg.includes('429')) {
         setErrorMsg('Rate limit reached. Wait a moment and try again.');
       } else {
@@ -546,7 +696,7 @@ function LoadingScreen({ nav, pendingKey }) {
               {phase === 3 ? 'Analysis Complete' : 'Analyzing…'}
             </div>
             <div style={{ fontFamily: 'var(--ui)', fontSize: 13, color: 'var(--text-3)', marginTop: 6 }}>
-              {phase === 3 ? 'Verdict ready' : isForm ? 'Running algorithm — free & instant' : 'Powered by Claude Vision AI'}
+              {phase === 3 ? 'Verdict ready' : isForm ? 'Running algorithm — free & instant' : 'Powered by Gemini Vision — free'}
             </div>
           </div>
 

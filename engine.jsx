@@ -1,9 +1,9 @@
 /* engine.jsx — AI chart analysis engine.
-   Flow: image → Claude Vision (extracts chart data) → 103 strategy evaluators → weighted consensus → trade plan */
+   Flow: image → Gemini Vision (extracts chart data) → 103 strategy evaluators → weighted consensus → trade plan */
 
 /* ══════════════════════════════════════════════════════════════
-   SECTION 1 — CLAUDE VISION PROMPT
-   Asks Claude to extract structured chart data as JSON.
+   SECTION 1 — GEMINI VISION PROMPT
+   Asks Gemini to extract structured chart data as JSON.
 ══════════════════════════════════════════════════════════════ */
 
 const VISION_PROMPT = `You are an expert technical analyst. Analyze this TradingView chart screenshot and extract ALL visible technical information.
@@ -127,28 +127,22 @@ Rules:
 - The JSON must be complete and valid`;
 
 /* ══════════════════════════════════════════════════════════════
-   SECTION 2 — CLAUDE VISION API CALL
+   SECTION 2 — GEMINI VISION API CALL (free tier, no cost)
 ══════════════════════════════════════════════════════════════ */
 
-async function callClaudeVision(base64, mimeType, apiKey) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+async function callGeminiVision(base64, mimeType, apiKey) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const resp = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-opus-4-8',
-      max_tokens: 2048,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-          { type: 'text', text: VISION_PROMPT },
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: mimeType, data: base64 } },
+          { text: VISION_PROMPT },
         ],
       }],
+      generationConfig: { maxOutputTokens: 2048, temperature: 0.1 },
     }),
   });
 
@@ -159,15 +153,13 @@ async function callClaudeVision(base64, mimeType, apiKey) {
   }
 
   const data = await resp.json();
-  const raw = data.content[0].text.trim();
+  const raw = data.candidates[0].content.parts[0].text.trim();
 
-  // Strip markdown code fences if present
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
 
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Try to extract JSON object from any surrounding text
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     throw new Error('Could not parse chart data from AI response. Please try again.');
@@ -1610,8 +1602,8 @@ function generateLiquidityZones(d) {
 ══════════════════════════════════════════════════════════════ */
 
 async function analyzeChart(imageBase64, mimeType, apiKey, timeframe) {
-  // 1. Extract chart data via Claude Vision
-  const d = await callClaudeVision(imageBase64, mimeType, apiKey);
+  // 1. Extract chart data via Gemini Vision
+  const d = await callGeminiVision(imageBase64, mimeType, apiKey);
 
   // 2. Determine effective timeframe (user override takes priority)
   const tf = timeframe || d.timeframe || '4h';
