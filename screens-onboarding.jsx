@@ -258,6 +258,10 @@ function AuthScreen({ onDone, nav }) {
             {saved ? '✓ Saved — entering app…' : 'Save & continue'}
           </Button>
 
+          <button onClick={onDone} style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 14, cursor: 'pointer', marginTop: 14, width: '100%', textAlign: 'center' }}>
+            Skip for now — explore without AI
+          </button>
+
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '14px 0 0' }}>
             <Icon name="info" size={14} color="var(--text-3)" style={{ marginTop: 1, flexShrink: 0 }} />
             <span style={{ fontFamily: 'var(--ui)', fontSize: 11.5, color: 'var(--text-3)', lineHeight: 1.5 }}>
@@ -310,6 +314,10 @@ function AuthScreen({ onDone, nav }) {
           </div>
         )}
       </div>
+
+      <button onClick={onDone} style={{ background: 'none', border: 'none', color: 'var(--text-3)', fontFamily: 'var(--ui)', fontWeight: 600, fontSize: 14, cursor: 'pointer', marginBottom: 14, width: '100%', textAlign: 'center' }}>
+        Skip — explore without signing in
+      </button>
 
       <p style={{ fontFamily: 'var(--ui)', fontSize: 11.5, color: 'var(--text-3)', textAlign: 'center', lineHeight: 1.6, margin: 0 }}>
         By continuing you agree to our <span style={{ color: 'var(--text-2)' }}>Terms</span> & <span style={{ color: 'var(--text-2)' }}>Privacy Policy</span>.<br />Analysis is informational, not financial advice.
