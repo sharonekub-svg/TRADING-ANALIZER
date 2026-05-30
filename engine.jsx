@@ -1684,7 +1684,153 @@ async function analyzeChart(imageBase64, mimeType, apiKey, timeframe) {
   };
 }
 
+/* ══════════════════════════════════════════════════════════════
+   SECTION 9 — FREE FORM-BASED ANALYSIS (no API, no image)
+   Converts user-selected form values into chartData, then runs
+   the same 103 strategy evaluators as analyzeChart().
+══════════════════════════════════════════════════════════════ */
+
+function buildChartDataFromForm(form) {
+  const emaVisible = form.emaAlignment != null && form.emaAlignment !== 'none';
+  const macdVisible = form.macd != null && form.macd !== 'none';
+
+  return {
+    asset: form.asset || 'CHART',
+    exchange: null,
+    price: form.price || null,
+    priceStr: form.price ? String(form.price) : '—',
+    change: null,
+    timeframe: form.tf || '4H',
+    trend: {
+      primary: form.trend || 'sideways',
+      strength: form.strength || 'moderate',
+    },
+    marketStructure: {
+      type: form.msType || 'continuation',
+      direction: form.msDirection || 'neutral',
+      hhhl: form.hhhl || false,
+      lhll: form.lhll || false,
+    },
+    indicators: {
+      ema: {
+        visible: emaVisible,
+        alignment: emaVisible ? form.emaAlignment : 'mixed',
+        priceAbove: form.emaAlignment === 'bullish',
+        recentCross: 'none',
+      },
+      sma50:  { visible: form.sma50 != null, priceAbove: form.sma50 || false },
+      sma200: { visible: false, priceAbove: false },
+      rsi: {
+        visible: true,
+        value: form.rsiValue || null,
+        zone: form.rsiZone || 'neutral',
+        trend: form.rsiTrend || 'flat',
+        divergence: 'none',
+      },
+      macd: {
+        visible: macdVisible,
+        histogram: macdVisible ? form.macd : 'none',
+        signalCross: form.macdCross || 'none',
+        aboveZero: macdVisible && form.macd.startsWith('positive'),
+      },
+      bollinger: { visible: false, position: 'middle', squeeze: false, expanding: false },
+      stochastic: { visible: false, value: null, zone: 'neutral', cross: 'none' },
+      volume: {
+        visible: form.volumeVisible || false,
+        trend: form.volumeTrend || 'average',
+        aboveAverage: form.volumeAbove || false,
+        divergence: 'none',
+      },
+      vwap:      { visible: false, priceAbove: false },
+      ichimoku:  { visible: false, priceAboveCloud: false, tkCross: 'none', kumoColor: 'bullish' },
+      supertrend:{ visible: false, direction: 'bullish' },
+      adx:       { visible: false, value: null, trending: false },
+    },
+    priceAction: {
+      lastCandle: form.lastCandle || 'doji',
+      pattern: form.candlePattern || 'none',
+      insideBar: false,
+      outsideBar: (form.candlePattern === 'engulfing_bull' || form.candlePattern === 'engulfing_bear'),
+      trendlineBreak: 'none',
+    },
+    chartPattern: {
+      type: form.chartPattern || 'none',
+      completion: form.patternCompletion || 0,
+      breakout: form.patternBreakout || false,
+      direction: form.chartPatternDir || 'none',
+    },
+    smc: {
+      bos: form.bos || 'none',
+      choch: form.choch || 'none',
+      orderBlock: {
+        present: form.orderBlock != null && form.orderBlock !== 'none',
+        type: form.orderBlock || 'none',
+        priceNear: form.orderBlockNear || false,
+      },
+      fvg: { present: false, type: 'none', filled: false },
+      liquidityAbove: form.liquidityAbove || false,
+      liquidityBelow: form.liquidityBelow || false,
+      premiumDiscount: form.premiumDiscount || 'equilibrium',
+    },
+    fibonacci: { visible: false, nearRetracement: 'none', nearExtension: 'none' },
+    levels: {
+      support:      (form.support    || []).filter(Boolean),
+      resistance:   (form.resistance || []).filter(Boolean),
+      currentPrice: form.price || 0,
+    },
+  };
+}
+
+function analyzeFromForm(formData, timeframe) {
+  const d  = buildChartDataFromForm(formData);
+  const tf = timeframe || formData.tf || '4h';
+
+  const strategyResults = evaluateAllStrategies(d);
+  const groupConsensus  = computeGroupConsensus(strategyResults, tf);
+  const { rec, conf }   = computeFinalRecommendation(groupConsensus);
+  const risk    = computeRiskScore(d, groupConsensus);
+  const plan    = generateTradePlan(d, rec, conf);
+  const summary = generateSummary(d, rec, conf, groupConsensus);
+  const bullList = generateBullFactors(d, groupConsensus);
+  const bearList = generateBearFactors(d, groupConsensus);
+  const liqZones = generateLiquidityZones(d);
+
+  const fmtList  = arr => (arr || []).filter(Boolean).map(n => fmt(n));
+  const rawAsset = (d.asset || 'CHART').toUpperCase();
+  const symbol   = rawAsset.replace(/[^A-Z0-9]/g, '').slice(0, 8) || 'CHART';
+  const id = 'form_' + Date.now();
+
+  return {
+    id, symbol,
+    name:    d.asset || rawAsset,
+    tf:      (d.timeframe || tf).toUpperCase(),
+    price:   d.priceStr || (d.price ? fmt(d.price) : '—'),
+    priceNum: d.price || 0,
+    chg:     '—',
+    up:      true,
+    rec, conf, risk,
+    when:    'Just now',
+    seed:    Math.floor(Math.random() * 99) + 1,
+    summary,
+    bull:    bullList,
+    bear:    bearList,
+    structure: `${(d.marketStructure.direction.charAt(0).toUpperCase() + d.marketStructure.direction.slice(1))} — ${d.marketStructure.type.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase())}`,
+    support:   fmtList(d.levels?.support),
+    resist:    fmtList(d.levels?.resistance),
+    liquidity: liqZones,
+    entry:   plan ? plan.entry   : null,
+    stop:    plan ? plan.stop    : null,
+    targets: plan ? plan.targets : [],
+    rr:      plan ? plan.rr      : '—',
+    strategies: 103,
+    consensus: groupConsensus.slice(0, 5).map(g => ({ group: g.group, sig: g.sig, w: g.w })),
+    spark: window.DATA.spark(Math.floor(Math.random() * 20)),
+    _chartData: d,
+  };
+}
+
 window.ENGINE = {
   analyzeChart,
+  analyzeFromForm,
   STRATEGY_COUNT: 103,
 };
