@@ -1,0 +1,25 @@
+{
+  "name": "trading-analizer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sharonekub-svg/TRADING-ANALIZER.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sharonekub-svg/TRADING-ANALIZER/issues"
+  },
+  "homepage": "https://github.com/sharonekub-svg/TRADING-ANALIZER#readme",
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-react": "^7.29.7"
+  }
+}
