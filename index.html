@@ -18,20 +18,24 @@
       --bg: #08090C; --bg-1: #0D0F14; --bg-2: #111318; --bg-3: #181B22; --bg-4: #20242E; --card: #0E1016;
       --border: rgba(255,255,255,0.07); --border-strong: rgba(255,255,255,0.12);
       --text: #F0F2F7; --text-2: #9BA3B8; --text-3: #555E72;
-      --brand: #7C6CFF; --brand-2: #9B8FFF; --brand-grad: linear-gradient(135deg,#8B7CFF,#6E8BFF); --brand-glow: rgba(124,108,255,0.45);
+      --brand: #7C6CFF; --brand-2: #9B8FFF;
+      --brand-grad: linear-gradient(135deg,#8B7CFF,#6E8BFF);
+      --brand-glow: rgba(124,108,255,0.45);
       --bull: #25D07C; --bull-dim: rgba(37,208,124,0.12); --bull-line: rgba(37,208,124,0.28);
       --bear: #FF4D5E; --bear-dim: rgba(255,77,94,0.12); --bear-line: rgba(255,77,94,0.28);
       --gold: #F0C268;
-      --display: 'Space Grotesk', sans-serif; --ui: 'Plus Jakarta Sans', sans-serif; --mono: 'JetBrains Mono', monospace;
+      --display: 'Space Grotesk', sans-serif;
+      --ui: 'Plus Jakarta Sans', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
     }
-    @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
-    @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes scaleIn  { from{opacity:0;transform:scale(0.94)} to{opacity:1;transform:scale(1)} }
-    @keyframes spin     { to{transform:rotate(360deg)} }
-    @keyframes pulse    { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.05)} }
-    @keyframes shimmer  { from{background-position:-200% 0} to{background-position:200% 0} }
-    @keyframes slideUp  { from{transform:translateY(100%)} to{transform:translateY(0)} }
-    #scaler { transform-origin: center center; display:flex; align-items:center; justify-content:center; }
+    @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+    @keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes scaleIn { from{opacity:0;transform:scale(0.94)} to{opacity:1;transform:scale(1)} }
+    @keyframes spin    { to{transform:rotate(360deg)} }
+    @keyframes pulse   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.05)} }
+    @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    #scaler { transform-origin:center center; display:flex; align-items:center; justify-content:center; }
     .scrollarea { overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
     .scrollarea::-webkit-scrollbar { display:none; }
     input,textarea,button,select { font-family:inherit; -webkit-tap-highlight-color:transparent; }
@@ -360,9 +364,7 @@ Object.assign(window, {
   uS: useState, uE: useEffect, uR: useRef, uM: useMemo,
 });
 
-  </script>
 
-  <script type="text/babel">
 /* data.jsx — AI Trade Analyst data layer.
    Mock data for the UI + API key / analysis history helpers. */
 
@@ -526,9 +528,7 @@ const History = {
 
 window.DATA = { ANALYSES, WATCHLIST, ALERTS, JOURNAL, STRATEGY_GROUPS, INSIGHTS, spark, ApiKey, History };
 
-  </script>
 
-  <script type="text/babel">
 /* engine.jsx — AI chart analysis engine.
    Flow: image → Claude Vision (extracts chart data) → 103 strategy evaluators → weighted consensus → trade plan */
 
@@ -2220,9 +2220,7 @@ window.ENGINE = {
   STRATEGY_COUNT: 103,
 };
 
-  </script>
 
-  <script type="text/babel">
 /* screens-onboarding.jsx — shared chrome, onboarding, auth (with API key setup) */
 
 /* ══════════════════════════════════════════════════════════════
@@ -2545,9 +2543,7 @@ function AuthScreen({ onDone, nav }) {
 
 Object.assign(window, { Onboarding, AuthScreen });
 
-  </script>
 
-  <script type="text/babel">
 /* screens-home.jsx — Home dashboard */
 
 function StatTile({ label, value, sub, tone }) {
@@ -2723,9 +2719,7 @@ function HomeScreen({ nav }) {
 
 Object.assign(window, { HomeScreen, StatTile, RecentRow });
 
-  </script>
 
-  <script type="text/babel">
 /* screens-upload.jsx — Upload screen + Loading screen */
 
 function UploadScreen({ nav }) {
@@ -3084,9 +3078,7 @@ function LoadingScreen({ nav, pendingKey }) {
 
 Object.assign(window, { UploadScreen, LoadingScreen });
 
-  </script>
 
-  <script type="text/babel">
 /* screens-results.jsx — Results screen (3 tabs: Overview / Trade Plan / Factors) */
 
 function ResultsScreen({ nav, analysis }) {
@@ -3369,9 +3361,7 @@ function FactorRow({ text, tone }) {
 
 Object.assign(window, { ResultsScreen });
 
-  </script>
 
-  <script type="text/babel">
 /* screens-premium.jsx — Premium / upgrade screen */
 
 function PremiumScreen({ nav }) {
@@ -3481,9 +3471,7 @@ function PremiumScreen({ nav }) {
 
 Object.assign(window, { PremiumScreen });
 
-  </script>
 
-  <script type="text/babel">
 /* screens-secondary.jsx — Watchlist, Alerts, Journal, Saved, Profile screens */
 
 /* ══════════════════════════════════════════════════════════════
@@ -3855,9 +3843,7 @@ function ProfileScreen({ nav }) {
 
 Object.assign(window, { WatchlistScreen, AlertsScreen, JournalScreen, SavedScreen, ProfileScreen });
 
-  </script>
 
-  <script type="text/babel">
 /* app.jsx — Root app: device frame, navigation stack, tab bar, screen router */
 
 /* ── Status bar ── */
@@ -3998,7 +3984,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     function scalePhone() {
       const pad = 24, vw = window.innerWidth, vh = window.innerHeight;
       const scale = Math.min((vw-pad)/402,(vh-pad)/874,1.08);
-      document.getElementById('scaler').style.transform='scale('+scale+')';
+      document.getElementById('scaler').style.transform = 'scale('+scale+')';
     }
     scalePhone();
     window.addEventListener('resize', scalePhone);
