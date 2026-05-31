@@ -130,44 +130,27 @@ Rules:
    SECTION 2 — CLAUDE VISION API CALL
 ══════════════════════════════════════════════════════════════ */
 
-async function callClaudeVision(base64, mimeType, apiKey) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+async function callClaudeVision(base64, mimeType) {
+  const resp = await fetch('/api/analyze', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-opus-4-8',
-      max_tokens: 2048,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
-          { type: 'text', text: VISION_PROMPT },
-        ],
-      }],
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageBase64: base64, mimeType }),
   });
 
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    const msg = (err.error && err.error.message) || `API error ${resp.status}`;
+    const msg = err.error || `API error ${resp.status}`;
     throw new Error(msg);
   }
 
   const data = await resp.json();
   const raw = data.content[0].text.trim();
 
-  // Strip markdown code fences if present
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
 
   try {
     return JSON.parse(cleaned);
   } catch {
-    // Try to extract JSON object from any surrounding text
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     throw new Error('Could not parse chart data from AI response. Please try again.');
@@ -1609,9 +1592,9 @@ function generateLiquidityZones(d) {
    SECTION 8 — MAIN ENTRY POINT
 ══════════════════════════════════════════════════════════════ */
 
-async function analyzeChart(imageBase64, mimeType, apiKey, timeframe) {
-  // 1. Extract chart data via Claude Vision
-  const d = await callClaudeVision(imageBase64, mimeType, apiKey);
+async function analyzeChart(imageBase64, mimeType, _apiKey, timeframe) {
+  // 1. Extract chart data via Claude Vision (key lives server-side)
+  const d = await callClaudeVision(imageBase64, mimeType);
 
   // 2. Determine effective timeframe (user override takes priority)
   const tf = timeframe || d.timeframe || '4h';
