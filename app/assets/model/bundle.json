@@ -1,0 +1,249 @@
+{
+ "bundle_version": 1,
+ "model_id": "fixture",
+ "outputs": {
+  "produce": [
+   "banana",
+   "apple",
+   "orange",
+   "mandarin",
+   "avocado",
+   "tomato",
+   "cucumber",
+   "mango",
+   "peach",
+   "nectarine",
+   "watermelon",
+   "melon",
+   "grape",
+   "strawberry",
+   "pomegranate",
+   "pear",
+   "kiwi",
+   "plum",
+   "persimmon",
+   "lemon",
+   "guava",
+   "pepper",
+   "other"
+  ],
+  "ripeness": [
+   "unripe",
+   "partially_ripe",
+   "ripe",
+   "overripe"
+  ],
+  "freshness": [
+   "fresh",
+   "declining",
+   "spoiled"
+  ],
+  "visual_spoilage": [
+   "none",
+   "mild",
+   "severe"
+  ]
+ },
+ "produce_meta": {
+  "banana": {
+   "category": "fruit",
+   "he": "בננה",
+   "emoji": "🍌",
+   "priority": "P1"
+  },
+  "apple": {
+   "category": "fruit",
+   "he": "תפוח",
+   "emoji": "🍎",
+   "priority": "P1"
+  },
+  "orange": {
+   "category": "fruit",
+   "he": "תפוז",
+   "emoji": "🍊",
+   "priority": "P1"
+  },
+  "mandarin": {
+   "category": "fruit",
+   "he": "קלמנטינה",
+   "emoji": "🍊",
+   "priority": "P1"
+  },
+  "avocado": {
+   "category": "fruit",
+   "he": "אבוקדו",
+   "emoji": "🥑",
+   "priority": "P1"
+  },
+  "tomato": {
+   "category": "vegetable",
+   "he": "עגבנייה",
+   "emoji": "🍅",
+   "priority": "P1"
+  },
+  "cucumber": {
+   "category": "vegetable",
+   "he": "מלפפון",
+   "emoji": "🥒",
+   "priority": "P1"
+  },
+  "mango": {
+   "category": "fruit",
+   "he": "מנגו",
+   "emoji": "🥭",
+   "priority": "P2"
+  },
+  "peach": {
+   "category": "fruit",
+   "he": "אפרסק",
+   "emoji": "🍑",
+   "priority": "P2"
+  },
+  "nectarine": {
+   "category": "fruit",
+   "he": "נקטרינה",
+   "emoji": "🍑",
+   "priority": "P2"
+  },
+  "watermelon": {
+   "category": "fruit",
+   "he": "אבטיח",
+   "emoji": "🍉",
+   "priority": "P2"
+  },
+  "melon": {
+   "category": "fruit",
+   "he": "מלון",
+   "emoji": "🍈",
+   "priority": "P2"
+  },
+  "grape": {
+   "category": "fruit",
+   "he": "ענבים",
+   "emoji": "🍇",
+   "priority": "P2"
+  },
+  "strawberry": {
+   "category": "fruit",
+   "he": "תות",
+   "emoji": "🍓",
+   "priority": "P2"
+  },
+  "pomegranate": {
+   "category": "fruit",
+   "he": "רימון",
+   "emoji": "🔴",
+   "priority": "P2"
+  },
+  "pear": {
+   "category": "fruit",
+   "he": "אגס",
+   "emoji": "🍐",
+   "priority": "P2"
+  },
+  "kiwi": {
+   "category": "fruit",
+   "he": "קיווי",
+   "emoji": "🥝",
+   "priority": "P3"
+  },
+  "plum": {
+   "category": "fruit",
+   "he": "שזיף",
+   "emoji": "🟣",
+   "priority": "P3"
+  },
+  "persimmon": {
+   "category": "fruit",
+   "he": "אפרסמון",
+   "emoji": "🟠",
+   "priority": "P3"
+  },
+  "lemon": {
+   "category": "fruit",
+   "he": "לימון",
+   "emoji": "🍋",
+   "priority": "P3"
+  },
+  "guava": {
+   "category": "fruit",
+   "he": "גויאבה",
+   "emoji": "🟢",
+   "priority": "P3"
+  },
+  "pepper": {
+   "category": "vegetable",
+   "he": "פלפל",
+   "emoji": "🫑",
+   "priority": "P3"
+  },
+  "other": {
+   "category": "none",
+   "he": "אחר",
+   "emoji": "❔",
+   "priority": "-",
+   "is_negative_class": true
+  }
+ },
+ "label_he": {
+  "ripeness": {
+   "unripe": "לא בשל",
+   "partially_ripe": "כמעט בשל",
+   "ripe": "בשל",
+   "overripe": "בשל מדי",
+   "unknown": "לא ידוע"
+  },
+  "freshness": {
+   "fresh": "טרי",
+   "declining": "פחות טרי",
+   "spoiled": "מקולקל",
+   "unknown": "לא ידוע"
+  },
+  "visual_spoilage": {
+   "none": "לא זוהו",
+   "mild": "סימנים קלים",
+   "severe": "סימנים משמעותיים",
+   "unknown": "לא ידוע"
+  }
+ },
+ "temperatures": {},
+ "thresholds": {
+  "produce_min_prob": 0.7,
+  "produce_min_margin": 0.15,
+  "ood_min_energy": 2.0,
+  "head_min_prob": 0.55,
+  "spoiled_alert_prob": 0.4
+ },
+ "supported_heads": {
+  "banana": [
+   "freshness",
+   "ripeness",
+   "visual_spoilage"
+  ],
+  "avocado": [
+   "ripeness"
+  ],
+  "apple": [
+   "freshness"
+  ],
+  "tomato": [
+   "freshness",
+   "visual_spoilage"
+  ]
+ },
+ "input": {
+  "size": 224,
+  "mean": [
+   0.485,
+   0.456,
+   0.406
+  ],
+  "std": [
+   0.229,
+   0.224,
+   0.225
+  ],
+  "resize": "short_side_then_center_crop",
+  "resize_ratio": 1.14
+ }
+}

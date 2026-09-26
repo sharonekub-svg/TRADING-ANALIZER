@@ -90,3 +90,20 @@ def apply_split_hints(groups: Sequence[Hashable], splits: list[str], hints: Sequ
             best[g] = h
     out = [best.get(g, s) for g, s in zip(groups, splits)]
     return out, sum(len(v) > 1 for v in conflicted.values())
+
+
+def carve_val_from_train(groups: Sequence[Hashable], splits_: list[str], strata: Sequence[Hashable],
+                         frac: float, seed: int = 1337, frozen: Sequence[bool] | None = None) -> list[str]:
+    """Move a group-stratified `frac` of TRAIN clusters to 'val' (for datasets whose official
+    val split is too small to gate on). Clusters with any `frozen` member (e.g. force_split
+    datasets such as Fruits-360, never used for evaluation) are left untouched."""
+    frozen_groups = {g for g, f in zip(groups, frozen or [False] * len(groups)) if f}
+    idx = [i for i, (g, s) in enumerate(zip(groups, splits_)) if s == "train" and g not in frozen_groups]
+    if not idx:
+        return list(splits_)
+    sub = group_split([groups[i] for i in idx], [strata[i] for i in idx],
+                      {"train": 1 - frac, "val": frac, "test": 0.0}, seed=seed + 1)
+    out = list(splits_)
+    for i, s in zip(idx, sub):
+        out[i] = s
+    return out

@@ -20,7 +20,7 @@ from ml.preprocessing import dedup, hashing, image_io, labels, registry, splits
 
 def build(dataset_ids: list[str], purpose: str, raw_root: Path, out_dir: Path,
           holdout: set[str], seed: int = 1337, max_side: int = 512, max_distance: int = 6,
-          write_images: bool = True) -> dict:
+          write_images: bool = True, val_frac_from_train: float = 0.0) -> dict:
     tax = load_taxonomy()
     reg = registry.load_registry()
     signoffs = registry.load_signoffs()
@@ -56,6 +56,9 @@ def build(dataset_ids: list[str], purpose: str, raw_root: Path, out_dir: Path,
     split = splits.group_split(cluster_ids, strata, seed=seed)
     split, n_conflict = splits.apply_split_hints(cluster_ids, split, [s.split_hint for s, _, _ in samples])
     report["official_split_conflicts"] = n_conflict
+    if val_frac_from_train > 0:
+        frozen = ["force_split" in tax.datasets[s.dataset_id] for s, _, _ in samples]
+        split = splits.carve_val_from_train(cluster_ids, split, strata, val_frac_from_train, seed, frozen)
     split = splits.apply_dataset_holdout([s.dataset_id for s, _, _ in samples], split, holdout, cluster_ids)
     # Label conflicts: clusters whose members carry different produce labels (same scene,
     # different class). Reported for review; multi-object source images (Open Images) are expected here.
@@ -95,9 +98,11 @@ def main() -> None:
     ap.add_argument("--holdout", nargs="*", default=[])
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--max-distance", type=int, default=6)
+    ap.add_argument("--val-frac-from-train", type=float, default=0.0,
+                    help="move this fraction of train clusters to val (group-aware, stratified)")
     args = ap.parse_args()
     rep = build(args.datasets, args.purpose, args.raw_root, args.out, set(args.holdout),
-                seed=args.seed, max_distance=args.max_distance)
+                seed=args.seed, max_distance=args.max_distance, val_frac_from_train=args.val_frac_from_train)
     print(json.dumps({k: rep[k] for k in ("datasets", "dedup", "rejected_files")}, indent=2))
 
 

@@ -18,10 +18,11 @@ from pathlib import Path
 import numpy as np
 import torch
 import yaml
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from ml.common.taxonomy import HEADS, REPO_ROOT, load_taxonomy
 from ml.evaluation import calibration, gates, metrics
+from ml.inference.decision import supported_heads_from_manifest
 from ml.training import augment, dataset, losses, model as model_lib
 
 
@@ -89,27 +90,46 @@ def main() -> None:
     (run_dir / "config.yaml").write_text(yaml.safe_dump(cfg))
     (run_dir / "git.txt").write_text(_git_hash())
 
+    if cfg.get("threads"):
+        torch.set_num_threads(cfg["threads"])
     data_root = REPO_ROOT / cfg["data"]["processed_dir"]
-    mf = data_root / "manifest.jsonl"
-    ds_filter = set(cfg["data"]["datasets"]) if cfg["data"].get("datasets") else None
-    tr_rows = dataset.read_manifest(mf, {"train"}, ds_filter)
-    va_rows = dataset.read_manifest(mf, {"val"}, ds_filter)
+    tr_rows = dataset.select_rows(cfg, {"train"}, data_root)
+    va_rows = dataset.select_rows(cfg, {"val"}, data_root)
+    (run_dir / "supported_heads.json").write_text(json.dumps(supported_heads_from_manifest(tr_rows), indent=2))
     tr = dataset.ManifestDataset(tr_rows, data_root, tax, augment.build_train_transform(cfg))
     va = dataset.ManifestDataset(va_rows, data_root, tax, augment.build_eval_transform(cfg))
     g = torch.Generator().manual_seed(cfg["seed"])
     bs, nw = cfg["train"]["batch_size"], cfg["train"].get("num_workers", 4)
-    tl = DataLoader(tr, bs, shuffle=True, num_workers=nw, collate_fn=dataset.collate, generator=g, drop_last=True)
+    # Class-balanced sampling on produce: weight ~ count^-alpha (alpha=0 -> uniform, 1 -> fully balanced).
+    alpha = cfg["train"].get("balance_alpha", 0.0)
+    n_per_epoch = cfg["train"].get("samples_per_epoch") or len(tr)
+    if alpha > 0 or cfg["train"].get("samples_per_epoch"):
+        from collections import Counter
+        keys = [str(r["labels"]["produce"]) for r in tr_rows]
+        cnt = Counter(keys)
+        w = torch.tensor([cnt[k] ** -alpha for k in keys], dtype=torch.double)
+        sampler = WeightedRandomSampler(w, n_per_epoch, replacement=True, generator=g)
+        tl = DataLoader(tr, bs, sampler=sampler, num_workers=nw, collate_fn=dataset.collate, drop_last=True)
+    else:
+        tl = DataLoader(tr, bs, shuffle=True, num_workers=nw, collate_fn=dataset.collate, generator=g, drop_last=True)
     vl = DataLoader(va, bs, shuffle=False, num_workers=nw, collate_fn=dataset.collate)
+    print(f"train {len(tr_rows)} (sampled {n_per_epoch}/epoch), val {len(va_rows)}", flush=True)
 
     n_classes = {h: tax.num_classes(h) for h in HEADS}
     net = model_lib.build_model(cfg, n_classes).to(device)
-    opt = torch.optim.AdamW(net.parameters(), lr=cfg["train"]["lr"], weight_decay=cfg["train"].get("weight_decay", 0.05))
+    lr = cfg["train"]["lr"]
+    bb_mult = cfg["train"].get("backbone_lr_mult", 1.0)
+    bb = [p for n, p in net.named_parameters() if n.startswith("backbone.") and p.requires_grad]
+    heads = [p for n, p in net.named_parameters() if not n.startswith("backbone.")]
+    opt = torch.optim.AdamW([{"params": bb, "lr": lr * bb_mult}, {"params": heads, "lr": lr}],
+                            weight_decay=cfg["train"].get("weight_decay", 0.05))
     epochs = cfg["train"]["epochs"]
-    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=cfg["train"]["lr"], total_steps=epochs * max(1, len(tl)),
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=[lr * bb_mult, lr], total_steps=epochs * max(1, len(tl)),
                                                 pct_start=cfg["train"].get("warmup_frac", 0.1))
     head_w = cfg["train"]["head_weights"]
     best, step = -1.0, 0
     for ep in range(epochs):
+        t0 = time.time()
         net.train()
         for x, y in tl:
             x = x.to(device)
@@ -126,7 +146,8 @@ def main() -> None:
                 break
         summ = summarize_heads(collect(net, vl, device), tax)
         score = np.nanmean([summ[h]["macro_f1"] for h in HEADS if summ[h].get("n", 0) and head_w.get(h, 0) > 0])
-        rec = {"epoch": ep, "step": step, "val_score": float(score),
+        rec = {"epoch": ep, "step": step, "sec": round(time.time() - t0, 1), "loss": round(float(loss), 4),
+               "val_score": float(score),
                **{f"{h}/{k}": summ[h][k] for h in HEADS if summ[h].get("n") for k in ("top1", "macro_f1", "worst_class_recall", "ece")}}
         with open(run_dir / "metrics.jsonl", "a") as f:
             f.write(json.dumps(rec) + "\n")

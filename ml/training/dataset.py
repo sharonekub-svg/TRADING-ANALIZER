@@ -21,6 +21,19 @@ def read_manifest(path: Path, splits: set[str] | None = None, datasets: set[str]
     return rows
 
 
+def select_rows(cfg: dict, splits: set[str], data_root: Path) -> list[dict]:
+    """Rows for a config: dataset filter plus `exclude_source_regex` (classes held out of
+    training entirely, e.g. to serve as an unseen-produce OOD set)."""
+    import re
+    d = cfg["data"]
+    ds = set(d["datasets"]) if d.get("datasets") else None
+    rows = read_manifest(data_root / "manifest.jsonl", splits, ds)
+    pat = d.get("exclude_source_regex")
+    if pat:
+        rows = [r for r in rows if not re.search(pat, r["source_path"])]
+    return rows
+
+
 def label_mask(tax: Taxonomy, head: str, value) -> torch.Tensor:
     m = torch.zeros(tax.num_classes(head), dtype=torch.bool)
     enc = tax.encode(head, value)
