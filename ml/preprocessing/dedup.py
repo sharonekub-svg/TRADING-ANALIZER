@@ -3,7 +3,11 @@
 Edges come from three sources:
   1. identical file bytes (sha256)
   2. identical decoded pixels (pixel_digest) -> re-encoded copies
-  3. perceptual hash within `max_distance` bits -> augmented / near-duplicate
+  3. perceptual hash within `max_distance` bits -> augmented / near-duplicate,
+     VERIFIED by a chromaticity-histogram check. Calibrated on real data (see
+     docs/ingestion-report.md): pHash alone linked plum<->tomato on white backgrounds and
+     chained all of Fruits-360 into one cluster. Studio (white-background) pairs need a
+     stricter pHash distance and colour match.
   4. explicit metadata groups (e.g. same physical fruit photographed on different days)
 
 Candidate pairs for (3) come from multi-index hashing: the 64-bit hash is cut
@@ -12,9 +16,11 @@ band exactly (pigeonhole), so recall is exact for d <= n_bands - 1.
 """
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Hashable, Iterable, Sequence
+
+import numpy as np
 
 from ml.preprocessing.hashing import hamming
 
@@ -41,6 +47,23 @@ class DupRecord:
     pixel_digest: str
     phash: int
     group_key: Hashable | None = None  # explicit metadata group, already namespaced by dataset
+    chroma: np.ndarray | None = None   # hashing.chroma_hist; None disables verification
+    studio: bool = False               # hashing.white_fraction >= STUDIO_WHITE_FRACTION
+
+
+STUDIO_WHITE_FRACTION = 0.10
+VERIFY = {"max_chroma_l1": 0.40, "studio_max_distance": 2, "studio_max_chroma_l1": 0.15}
+
+
+def verified_near_duplicate(a: DupRecord, b: DupRecord, distance: int, max_distance: int) -> bool:
+    if distance > max_distance:
+        return False
+    if a.chroma is None or b.chroma is None:
+        return True
+    c = float(np.abs(a.chroma - b.chroma).sum())
+    if a.studio or b.studio:
+        return distance <= VERIFY["studio_max_distance"] and c <= VERIFY["studio_max_chroma_l1"]
+    return c <= VERIFY["max_chroma_l1"]
 
 
 def _bands(h: int, n_bands: int) -> list[tuple[int, int]]:
@@ -78,18 +101,26 @@ def cluster(records: Sequence[DupRecord], max_distance: int = 6, n_bands: int = 
     for i, r in enumerate(records):
         for b in _bands(r.phash, n_bands):
             buckets[b].append(i)
+    rejected: set[tuple[int, int]] = set()
     for members in buckets.values():
         if len(members) > max_bucket:
             stats["skipped_oversized_buckets"] += 1  # degenerate hashes (e.g. blank images)
             continue
         for a_pos, a in enumerate(members):
             for b in members[a_pos + 1:]:
-                if uf.find(a) == uf.find(b):
+                if uf.find(a) == uf.find(b) or (a, b) in rejected:
                     continue
-                if hamming(records[a].phash, records[b].phash) <= max_distance:
+                d = hamming(records[a].phash, records[b].phash)
+                if d > max_distance:
+                    continue
+                if verified_near_duplicate(records[a], records[b], d, max_distance):
                     uf.union(a, b)
                     stats["near_duplicate"] += 1
+                else:
+                    rejected.add((a, b))
+                    stats["near_duplicate_rejected_by_verification"] += 1
     ids = [uf.find(i) for i in range(n)]
     stats["clusters"] = len(set(ids))
+    stats["largest_cluster"] = max(Counter(ids).values()) if ids else 0
     stats["records"] = n
     return ids, dict(stats)

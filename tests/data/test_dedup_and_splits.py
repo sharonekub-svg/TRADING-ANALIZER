@@ -80,3 +80,32 @@ def test_image_checks(tmp_path):
     txt = tmp_path / "x.txt"
     txt.write_text("hi")
     assert not image_io.check_image(txt).ok
+
+
+def _blob(color, bg=(255, 255, 255)):
+    from PIL import ImageDraw
+    img = Image.new("RGB", (160, 160), bg)
+    ImageDraw.Draw(img).ellipse((30, 25, 130, 135), fill=color)
+    return img.filter(ImageFilter.GaussianBlur(2))
+
+
+def _vrec(img, key):
+    return dedup.DupRecord(sha256=key, pixel_digest=key, phash=hashing.dihedral_phash(img),
+                           chroma=hashing.chroma_hist(img),
+                           studio=hashing.white_fraction(img) >= dedup.STUDIO_WHITE_FRACTION)
+
+
+def test_studio_same_shape_different_colour_not_linked():
+    """Regression (real data): pHash linked plum<->tomato on white background and chained
+    all of Fruits-360 into one cluster."""
+    plum, tomato = _blob((70, 20, 60)), _blob((200, 40, 25))
+    assert hashing.hamming(hashing.dihedral_phash(plum), hashing.dihedral_phash(tomato)) <= 6
+    ids, stats = dedup.cluster([_vrec(plum, "a"), _vrec(tomato, "b")])
+    assert ids[0] != ids[1] and stats["near_duplicate_rejected_by_verification"] == 1
+
+
+def test_studio_brightness_copy_still_linked():
+    t = _blob((200, 40, 25))
+    brighter = ImageEnhance.Brightness(t).enhance(1.1)
+    ids, _ = dedup.cluster([_vrec(t, "a"), _vrec(brighter, "b")])
+    assert ids[0] == ids[1]

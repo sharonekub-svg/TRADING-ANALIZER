@@ -2,7 +2,7 @@
 
 Photograph a fruit or vegetable → our own on-device computer-vision model estimates **produce type, ripeness, freshness and visible spoilage**, and returns a Hebrew recommendation with a visual-only disclaimer. No third-party vision API.
 
-> **Status:** Phase 1 (research) done; Phase 2 pipeline code done and tested on synthetic data. **No model has been trained on real data. No accuracy claims exist.**
+> **Status:** Phase 1 done. Phase 2 engineering done and run on real data (Grocery Store, Open Images produce subset, Fruits-360 → [ingestion report](docs/ingestion-report.md)); Phase 2 items that need people (licence sign-offs, own photo collection) have tooling + protocol ready. **No model has been trained on real data. No accuracy claims exist.**
 >
 > Legacy note: the root-level `*.jsx`, `index.html`, `app.compiled.js`, `package*.json` belong to an earlier unrelated project (AI Trade Analyst) in this repository and are untouched. Recommend moving them to their own repo.
 
@@ -17,6 +17,9 @@ Photograph a fruit or vegetable → our own on-device computer-vision model esti
 | [model-strategy](docs/model-strategy.md) | Architecture options, backbone benchmark, training recipe |
 | [evaluation](docs/evaluation.md) | 7 test sets, metrics, leakage controls, gates |
 | [roadmap](docs/roadmap.md) | Phases 1–9 with acceptance criteria |
+| [ingestion-report](docs/ingestion-report.md) | Phase 2 real-data run: counts, duplicates, defects found |
+| [license-verification](docs/license-verification.md) | Per-dataset evidence, sign-off procedure, author request template |
+| [data-collection-protocol](docs/data-collection-protocol.md) | Own Israeli data: capture, grading guide, QA, legal |
 
 ## Layout
 
@@ -30,7 +33,8 @@ ml/evaluation/               metrics, calibration, OOD, acceptance gates (numpy 
 ml/inference/                quality gate + decision/Hebrew result (reference for the app)
 ml/export/                   ONNX / Core ML export + bundle.json, backbone benchmark
 ml/configs/                  YAML experiment configs
-scripts/                     download_datasets.py, verify_licenses.py
+scripts/                     download/fetch, licence check, dedup review, label audit, collection merge/validate
+tools/labeler/               offline Hebrew labelling tool (single HTML file)
 tests/                       data/, ml/ (incl. end-to-end smoke), app/ (Phase 7)
 app/                         mobile app (Phase 7 — not started by design)
 ```
@@ -52,10 +56,20 @@ python scripts/download_datasets.py --purpose commercial_training --datasets gro
 python scripts/download_datasets.py --purpose research_training --datasets fruitnet_indian \
        --import-archive ~/Downloads/fruitnet.zip   # login-walled sources: manual download
 
-# 3. Build the deduplicated, leakage-safe manifest
+python scripts/fetch_open_images.py --per-class 400 --workers 24   # produce crops, per-image CC BY 2.0 only
+
+# 3. Build the deduplicated, leakage-safe manifests (see docs/ingestion-report.md for the real run)
 python -m ml.preprocessing.build_manifest --purpose commercial_training \
-       --datasets grocery_store_klasson own_il_collection --holdout grocery_store_klasson
-python scripts/verify_licenses.py --manifest data/processed/manifest.jsonl --purpose commercial_training
+       --datasets grocery_store_klasson --out data/processed_commercial
+python -m ml.preprocessing.build_manifest --purpose research_training \
+       --datasets grocery_store_klasson open_images_v7 fruits360_original --out data/processed_research
+python scripts/verify_licenses.py --manifest data/processed_commercial/manifest.jsonl --purpose commercial_training
+python scripts/review_duplicates.py --processed data/processed_research          # dedup QA sheet
+python scripts/audit_samples.py --processed data/processed_research --dataset open_images_v7 --classes banana
+
+# Own collection (docs/data-collection-protocol.md): label with tools/labeler/index.html, then
+python scripts/merge_annotations.py --root data/raw/own_il_collection annotations_*.csv
+python scripts/validate_collection.py --root data/raw/own_il_collection --agreement
 
 # 4. Train (writes runs/<experiment>/<timestamp>/ with metrics, checkpoints, temperatures, gates)
 python -m ml.training.train --config ml/configs/baseline_mobilenetv3.yaml

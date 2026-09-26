@@ -70,3 +70,23 @@ def apply_dataset_holdout(dataset_ids: Sequence[str], splits: list[str], holdout
         if d in holdout or (groups is not None and groups[i] in tainted):
             out[i] = "cross_dataset_test"
     return out
+
+
+_HELD_OUT_ORDER = {"test": 0, "val": 1, "train": 2}
+
+
+def apply_split_hints(groups: Sequence[Hashable], splits: list[str], hints: Sequence[str | None]) -> tuple[list[str], int]:
+    """Honour official/forced splits. A cluster containing any hinted member takes the
+    most held-out hint among its members (test > val > train), so an image that is
+    duplicated across an official train/test boundary can never train the model.
+    Returns (splits, number of clusters whose official split had to be overridden)."""
+    best: dict[Hashable, str] = {}
+    conflicted: dict[Hashable, set[str]] = defaultdict(set)
+    for g, h in zip(groups, hints):
+        if h is None:
+            continue
+        conflicted[g].add(h)
+        if g not in best or _HELD_OUT_ORDER[h] < _HELD_OUT_ORDER[best[g]]:
+            best[g] = h
+    out = [best.get(g, s) for g, s in zip(groups, splits)]
+    return out, sum(len(v) > 1 for v in conflicted.values())

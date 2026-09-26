@@ -44,7 +44,8 @@ def build(dataset_ids: list[str], purpose: str, raw_root: Path, out_dir: Path,
                 continue
             img = image_io.load_rgb(path)
             recs.append(dedup.DupRecord(chk.sha256, hashing.pixel_digest(img),
-                                        hashing.dihedral_phash(img), s.group_key))
+                                        hashing.dihedral_phash(img), s.group_key, hashing.chroma_hist(img),
+                                        hashing.white_fraction(img) >= dedup.STUDIO_WHITE_FRACTION))
             samples.append((s, chk, path))  # re-decoded at write time; keeps memory flat
             n += 1
         report["datasets"][ds]["n_valid"] = n
@@ -53,7 +54,16 @@ def build(dataset_ids: list[str], purpose: str, raw_root: Path, out_dir: Path,
     report["dedup"] = stats
     strata = [f"{s.dataset_id}|{s.labels['produce']}" for s, _, _ in samples]
     split = splits.group_split(cluster_ids, strata, seed=seed)
+    split, n_conflict = splits.apply_split_hints(cluster_ids, split, [s.split_hint for s, _, _ in samples])
+    report["official_split_conflicts"] = n_conflict
     split = splits.apply_dataset_holdout([s.dataset_id for s, _, _ in samples], split, holdout, cluster_ids)
+    # Label conflicts: clusters whose members carry different produce labels (same scene,
+    # different class). Reported for review; multi-object source images (Open Images) are expected here.
+    by_cluster: dict[int, set] = {}
+    for (s, _, _), cid in zip(samples, cluster_ids):
+        by_cluster.setdefault(cid, set()).add((s.dataset_id, s.labels["produce"]))
+    report["clusters_with_conflicting_produce"] = sum(len({p for _, p in v}) > 1 for v in by_cluster.values())
+    report["cross_dataset_clusters"] = sum(len({d for d, _ in v}) > 1 for v in by_cluster.values())
     leaks = splits.check_no_leakage(cluster_ids, split)
     if leaks:
         raise AssertionError(f"{len(leaks)} groups leak across splits")

@@ -66,3 +66,26 @@ def pixel_digest(img: Image.Image) -> str:
     import hashlib
     arr = np.asarray(img.convert("RGB").resize((64, 64), Image.Resampling.BILINEAR))
     return hashlib.sha1((arr // 8).tobytes()).hexdigest()
+
+
+def chroma_hist(img: Image.Image, bins: int = 8) -> np.ndarray:
+    """Brightness- and orientation-invariant colour signature: normalised rg-chromaticity
+    histogram of foreground pixels (near-white background and near-black pixels ignored).
+    Separates shape-alike but differently coloured objects (plum vs tomato) that pHash
+    alone links on studio backgrounds."""
+    a = np.asarray(img.convert("RGB").resize((64, 64)), dtype=np.float64)
+    s = a.sum(2)
+    mx, mn = a.max(2), a.min(2)
+    fg = ((mx < 235) | (mx - mn > 25)) & (s > 60)
+    if fg.sum() < 50:
+        fg = np.ones_like(fg)
+    r = (a[..., 0] / np.maximum(s, 1))[fg]
+    g = (a[..., 1] / np.maximum(s, 1))[fg]
+    h, _, _ = np.histogram2d(r, g, bins=bins, range=[[0, 1], [0, 1]])
+    return (h.ravel() / h.sum()).astype(np.float32)
+
+
+def white_fraction(img: Image.Image) -> float:
+    """Share of near-white pixels; >= 0.1 marks a studio / white-background image."""
+    a = np.asarray(img.convert("RGB").resize((64, 64)))
+    return float((a.min(2) > 235).mean())

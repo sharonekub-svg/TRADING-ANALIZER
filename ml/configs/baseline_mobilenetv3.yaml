@@ -5,7 +5,7 @@ seed: 1337
 deterministic: true
 
 data:
-  processed_dir: data/processed
+  processed_dir: data/processed_commercial   # or data/processed_research (research-only datasets)
   datasets: null          # null = every dataset in the manifest (already licence-gated at build time)
   image_size: 224
 

@@ -24,7 +24,7 @@ REQUIRED_COLUMNS = (
     "classes", "produce_types", "ripeness_labels", "freshness_labels", "spoilage_labels",
     "license", "license_verification", "commercial_use", "attribution_required",
     "share_alike", "known_restrictions", "duplication_notes", "image_resolution",
-    "capture_conditions", "quality", "suitability", "planned_use", "priority",
+    "capture_conditions", "quality", "suitability", "planned_use", "priority", "license_evidence",
 )
 UNVERIFIED_COMMERCIAL = "DO NOT USE COMMERCIALLY UNTIL VERIFIED"
 COMMERCIAL_VALUES = {"yes", "no", "conditional_legal_review", "conditional_per_image", UNVERIFIED_COMMERCIAL}
@@ -33,6 +33,7 @@ PLANNED_USE_VALUES = {
     "train+real_world_test", "train+cross_dataset_test", "train+test (after sign-off)",
     "train_aux", "train+ood", "research_only", "candidate", "exclude",
 }
+SIGNOFF_DECISIONS = ("approved_commercial", "research_only", "rejected")
 PURPOSES = ("commercial_training", "research_training", "internal_evaluation")
 
 
@@ -72,6 +73,8 @@ def load_signoffs(path: Path = SIGNOFF_PATH) -> dict[str, dict]:
     for s in data:
         if not required <= s.keys():
             raise ValueError(f"sign-off missing fields: {required - s.keys()}")
+        if s["decision"] not in SIGNOFF_DECISIONS:
+            raise ValueError(f"sign-off decision must be one of {SIGNOFF_DECISIONS}")
         out[s["dataset_id"]] = s
     return out
 
@@ -83,8 +86,10 @@ def is_allowed(entry: DatasetEntry, purpose: str, signoffs: dict[str, dict] | No
     signoffs = load_signoffs() if signoffs is None else signoffs
     if entry.planned_use == "exclude":
         return False, "excluded in registry"
+    s = signoffs.get(entry.dataset_id)
+    if s is not None and s["decision"] == "rejected":
+        return False, f"rejected by {s['reviewer']} on {s['date']}"
     if purpose == "commercial_training":
-        s = signoffs.get(entry.dataset_id)
         if s is not None:
             ok = s["decision"] == "approved_commercial"
             return ok, f"legal sign-off by {s['reviewer']} on {s['date']}: {s['decision']}"

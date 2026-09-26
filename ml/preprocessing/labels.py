@@ -24,6 +24,7 @@ class RawSample:
     rel_path: str
     labels: dict[str, LabelSet]      # head -> label set (None = unknown)
     group_key: str | None            # namespaced "dataset_id:group"
+    split_hint: str | None = None    # official split (train/val/test) or forced split, if any
 
 
 def _encode_all(tax: Taxonomy, raw: dict[str, Any]) -> dict[str, LabelSet]:
@@ -60,7 +61,37 @@ def _group(cfg: dict, dataset_id: str, rel_path: str) -> str | None:
     return f"{dataset_id}:{m.group('group')}" if m else None
 
 
+def _split_hint(cfg: dict, rel_path: str) -> str | None:
+    if "force_split" in cfg:
+        return cfg["force_split"]
+    pat = cfg.get("split_pattern")
+    if not pat:
+        return None
+    m = re.search(pat, rel_path)
+    return m.group("split") if m else None
+
+
+def _stable(key: str) -> str:
+    import hashlib
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
 def iter_path_rules(tax: Taxonomy, dataset_id: str, root: Path) -> Iterator[RawSample]:
+    """`max_per_group` keeps a deterministic hash-ordered subset per metadata group
+    (e.g. 80 of ~700 near-identical video frames per Fruits-360 class)."""
+    cfg = tax.datasets[dataset_id]
+    cap = cfg.get("max_per_group")
+    if cap:
+        by_group: dict[str | None, list[RawSample]] = {}
+        for s in _iter_path_rules_all(tax, dataset_id, root):
+            by_group.setdefault(s.group_key, []).append(s)
+        for g in sorted(by_group, key=str):
+            yield from sorted(by_group[g], key=lambda s: _stable(s.rel_path))[:cap]
+        return
+    yield from _iter_path_rules_all(tax, dataset_id, root)
+
+
+def _iter_path_rules_all(tax: Taxonomy, dataset_id: str, root: Path) -> Iterator[RawSample]:
     cfg = tax.datasets[dataset_id]
     for p in sorted(root.rglob("*")):
         if not p.is_file() or p.suffix.lower() not in IMAGE_EXTENSIONS:
@@ -68,7 +99,7 @@ def iter_path_rules(tax: Taxonomy, dataset_id: str, root: Path) -> Iterator[RawS
         rel = p.relative_to(root).as_posix()
         labels = map_path(tax, dataset_id, rel)
         if labels is not None:
-            yield RawSample(dataset_id, rel, labels, _group(cfg, dataset_id, rel))
+            yield RawSample(dataset_id, rel, labels, _group(cfg, dataset_id, rel), _split_hint(cfg, rel))
 
 
 def iter_table(tax: Taxonomy, dataset_id: str, root: Path) -> Iterator[RawSample]:
@@ -89,8 +120,11 @@ def iter_table(tax: Taxonomy, dataset_id: str, root: Path) -> Iterator[RawSample
             if "produce" not in raw:
                 raise UnmappedLabelError(f"{dataset_id}: row without produce: {row}")
             g = row.get(cfg.get("group_column", ""), "")
+            hint = cfg.get("force_split") or (row.get(cfg["split_column"]) if "split_column" in cfg else None) or None
+            if hint is not None and hint not in ("train", "val", "test"):
+                raise UnmappedLabelError(f"{dataset_id}: bad split value '{hint}'")
             yield RawSample(dataset_id, row[cfg["path_column"]], _encode_all(tax, raw),
-                            f"{dataset_id}:{g}" if g else None)
+                            f"{dataset_id}:{g}" if g else None, hint)
 
 
 ADAPTERS = {"path_rules": iter_path_rules, "table": iter_table}

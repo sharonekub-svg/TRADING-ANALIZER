@@ -51,7 +51,11 @@ Image counts marked "verify" and folder names in `label_mapping.json` (`verified
 
 Pipeline defence (`ml/preprocessing/dedup.py`): SHA-256 + decoded-pixel digest + rotation/flip-invariant pHash (Hamming ≤ 6, exact recall via 8-band multi-index hashing) + metadata groups (same physical fruit) → union-find clusters → cluster is the split unit, across datasets.
 
-## Estimated usable training data (estimates, not measurements)
+## Measured after ingestion
+
+See [ingestion-report.md](ingestion-report.md): commercial manifest 3,676 images (Grocery Store, produce ID only); research manifest 34,175 images / 10,531 independent clusters (Grocery + Open Images + Fruits-360), still 0 ripeness/freshness labels.
+
+## Estimated usable training data (Phase 1 estimates)
 
 | Tier | Produce ID | Freshness | Ripeness |
 |---|---|---|---|
