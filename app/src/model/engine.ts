@@ -7,6 +7,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { requireOptionalNativeModule } from 'expo';
 
 import bundledBundle from '../../assets/model/bundle.json';
+import { combineProbs } from './advice';
 import { decide } from './decision';
 import { energy, softmax } from './math';
 import type { Bundle, Logits, QualityStats, ScanResult } from './types';
@@ -52,19 +53,29 @@ export interface ScanOutput {
   result: ScanResult;
   top3: { produce: string; he: string; prob: number }[];
   mode: Mode;
+  probs: Record<string, number[]>;
+  energy: number;
+  angles: number;
 }
 
-export async function scan(uri: string): Promise<ScanOutput> {
+/** Scan a photo. With `previous` (the "another angle" retry after an unsure result), the two
+ *  photos' probabilities are combined; a bad second photo falls back to asking for a retake. */
+export async function scan(uri: string, previous?: ScanOutput): Promise<ScanOutput> {
   const mode = inferenceMode();
   if (!mode) throw new Error('no inference engine configured');
   const { logits, quality } = mode === 'native'
     ? await native!.analyze(uri, bundle.input.size, bundle.input.resize_ratio, bundle.input.mean, bundle.input.std)
     : await remoteAnalyze(uri);
-  const probs = Object.fromEntries(HEADS.map((h) => [h, softmax(logits[h], bundle.temperatures[h] ?? 1)]));
-  const result = decide(bundle, probs, quality.reason, energy(logits.produce));
+  let probs: Record<string, number[]> = Object.fromEntries(HEADS.map((h) => [h, softmax(logits[h], bundle.temperatures[h] ?? 1)]));
+  let e = energy(logits.produce);
+  if (previous && !quality.reason) {
+    probs = Object.fromEntries(HEADS.map((h) => [h, combineProbs(previous.probs[h], probs[h])]));
+    e = Math.max(e, previous.energy);
+  }
+  const result = decide(bundle, probs, quality.reason, e);
   const top3 = probs.produce
     .map((p, i) => ({ produce: bundle.outputs.produce[i], he: bundle.produce_meta[bundle.outputs.produce[i]].he, prob: p }))
     .sort((a, b) => b.prob - a.prob)
     .slice(0, 3);
-  return { result, top3, mode };
+  return { result, top3, mode, probs, energy: e, angles: previous ? previous.angles + 1 : 1 };
 }

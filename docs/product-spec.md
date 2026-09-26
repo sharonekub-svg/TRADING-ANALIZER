@@ -8,7 +8,7 @@ Israeli consumers who want a quick, honest **visual** read on a fruit/vegetable:
 
 `פתיחה → מצלמה → סריקה → תוצאה` — no dashboard, no login for core use.
 
-1. **Camera** (full screen, RTL): one shutter button, hint "צלמו פרי או ירק אחד, מקרוב ובאור טוב".
+1. **Camera** (full screen, RTL): one primary button **"סרוק פרי"**, hint "צלמו פרי או ירק אחד, מקרוב ובאור טוב". The layout and its rationale are in [ux-principles.md](ux-principles.md), based on [competitor-ux-research.md](competitor-ux-research.md).
 2. **Scan**: on-device, target < 1 s total.
 3. **Result** card, one of four states (from `ScanResult.status`):
 

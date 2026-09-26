@@ -27,6 +27,8 @@ Photograph a fruit or vegetable → our own on-device computer-vision model esti
 | [data-collection-protocol](docs/data-collection-protocol.md) | Own Israeli data: capture, grading guide, QA, legal |
 | [results](docs/results.md) | **All measured results**: baseline, benchmark matrix, stress/OOD validation, export, release candidate |
 | [mobile](docs/mobile.md) | Export/quantisation measurements, Core ML fp16 decision, on-device plan |
+| [competitor-ux-research](docs/competitor-ux-research.md) | 7 scanner apps × 20 UX dimensions, patterns to adopt/avoid |
+| [ux-principles](docs/ux-principles.md) | Our UX principles + final v1 UI architecture |
 | [beta-and-production](docs/beta-and-production.md) | Beta entry/exit criteria, release checklist, monitoring, retraining |
 
 ## Layout
