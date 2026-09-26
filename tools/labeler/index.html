@@ -74,7 +74,12 @@ for (const [h, opts] of Object.entries(HEADS)) {
     b.onclick = () => { cur()[h] = v; render(); }; $(h).appendChild(b);
   }
 }
-function relPath(f) { return f.webkitRelativePath.split("/").slice(1).join("/"); }
+// Select the collection's `images` folder: paths are exported as images/<fruit_id>/<file>, matching labels.csv.
+function relPath(f) { return f.webkitRelativePath; }
+function dayFrom(prev, fid, date) {
+  if (prev.fruit_instance_id !== fid || prev.day === "" || !prev.capture_date || !date) return "";
+  return String(+prev.day + Math.round((Date.parse(date) - Date.parse(prev.capture_date)) / 86400000));
+}
 function cur() {
   const p = relPath(files[i]);
   if (!labels[p]) {
@@ -82,9 +87,10 @@ function cur() {
     const parts = p.split("/"), fid = parts.length >= 2 ? parts[parts.length - 2] : "";
     const m = parts[parts.length - 1].match(/^(\d{4})(\d{2})(\d{2})_/);
     const prev = labels[relPath(files[Math.max(0, i - 1)])] || {};
+    const date = m ? `${m[1]}-${m[2]}-${m[3]}` : "";
     labels[p] = { path: p, fruit_instance_id: fid, produce: fid.split("-")[0] || prev.produce || "banana",
-      variety: prev.fruit_instance_id === fid ? prev.variety : "", capture_date: m ? `${m[1]}-${m[2]}-${m[3]}` : "",
-      day: prev.fruit_instance_id === fid ? prev.day : "", device: prev.device || "", lighting: prev.lighting || "daylight",
+      variety: prev.fruit_instance_id === fid ? prev.variety : "", capture_date: date,
+      day: dayFrom(prev, fid, date), device: prev.device || "", lighting: prev.lighting || "daylight",
       background: prev.background || "counter", distance_cm: prev.distance_cm || "40", storage: prev.storage || "",
       ripeness: "", freshness: "", visual_spoilage: "", cut_check: "n/a", notes: "" };
   }

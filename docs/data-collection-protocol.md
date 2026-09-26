@@ -31,7 +31,7 @@ Conditions matrix (rotate so each fruit sees every level across days):
 
 ## 3. File naming and metadata
 
-`images/<fruit_instance_id>/<YYYYMMDD>_<shot>.jpg`. Strip GPS EXIF on ingest; keep timestamp. No faces; hands are fine. `labels.csv` columns (enforced by validator):
+`images/<fruit_instance_id>/<YYYYMMDD>_<shot>.jpg` (in the labeller, select the `images` folder itself so exported paths start with `images/`). Strip GPS EXIF on ingest; keep timestamp. No faces; hands are fine. `labels.csv` columns (enforced by validator):
 
 | Column | Values |
 |---|---|
