@@ -2,7 +2,12 @@
 
 Photograph a fruit or vegetable → our own on-device computer-vision model estimates **produce type, ripeness, freshness and visible spoilage**, and returns a Hebrew recommendation with a visual-only disclaimer. No third-party vision API.
 
-> **Status:** Phase 1 done. Phase 2 engineering done and run on real data (Grocery Store, Open Images produce subset, Fruits-360 → [ingestion report](docs/ingestion-report.md)); Phase 2 items that need people (licence sign-offs, own photo collection) have tooling + protocol ready. **No model has been trained on real data. No accuracy claims exist.**
+> **Status (all phases worked through; see [roadmap](docs/roadmap.md) and [results](docs/results.md)):**
+> - **Trained and measured:** a produce-identification model (MobileNetV3-L) trained only on commercially-cleared data. On unseen supermarket phone photos it reaches top-1 0.892 and macro-F1 0.851, but it **fails the per-class gates** (citrus, mango, cucumber and 5 more). Build `v0.1-dev` is therefore an internal dev build, **not releasable**.
+> - **Working and tested here:** the Expo app, the parity-tested decision logic, the self-hosted inference server, the Core ML fp16 export, the release pipeline, CI.
+> - **Not possible here:** ripeness, freshness and spoilage. No legally usable labelled data was reachable, so those heads are unsupported and the app says so.
+> - **Blocked on people and devices:** the Israeli photo collection and real-world test set, licence sign-offs, a Mac/iPhone build with on-device benchmarks, TestFlight beta.
+> - **Strongest measured finding:** public web and studio data scores 0.32 top-1 on phone photos, so our own data collection is the critical path.
 >
 > Legacy note: the root-level `*.jsx`, `index.html`, `app.compiled.js`, `package*.json` belong to an earlier unrelated project (AI Trade Analyst) in this repository and are untouched. Recommend moving them to their own repo.
 
@@ -20,6 +25,9 @@ Photograph a fruit or vegetable → our own on-device computer-vision model esti
 | [ingestion-report](docs/ingestion-report.md) | Phase 2 real-data run: counts, duplicates, defects found |
 | [license-verification](docs/license-verification.md) | Per-dataset evidence, sign-off procedure, author request template |
 | [data-collection-protocol](docs/data-collection-protocol.md) | Own Israeli data: capture, grading guide, QA, legal |
+| [results](docs/results.md) | **All measured results**: baseline, benchmark matrix, stress/OOD validation, export, release candidate |
+| [mobile](docs/mobile.md) | Export/quantisation measurements, Core ML fp16 decision, on-device plan |
+| [beta-and-production](docs/beta-and-production.md) | Beta entry/exit criteria, release checklist, monitoring, retraining |
 
 ## Layout
 
@@ -74,8 +82,10 @@ python scripts/validate_collection.py --root data/raw/own_il_collection --agreem
 # 4. Train (writes runs/<experiment>/<timestamp>/ with metrics, checkpoints, temperatures, gates)
 python -m ml.training.train --config ml/configs/baseline_mobilenetv3.yaml
 
-# 5. Export
-python -m ml.export.export --ckpt runs/<exp>/<ts>/best.pt --out exports/v0 [--coreml --fp16]
+# 5. Export + release (licence gate -> export -> parity -> eval -> gates -> sync into app)
+python scripts/fetch_weights.py
+scripts/release_model.sh runs/<exp>/<ts> data/processed_commercial v1     # refuses models failing gates
+python -m ml.export.export --ckpt runs/<exp>/<ts>/best.pt --out exports/v0 [--coreml --fp16] [--int8-calib data/processed_commercial]
 python -m ml.export.benchmark            # host-CPU relative latency/size of candidate backbones
 ```
 

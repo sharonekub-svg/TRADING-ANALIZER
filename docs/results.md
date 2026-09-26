@@ -51,7 +51,7 @@ Findings:
 2. **Citrus is the weak spot.** Mandarin/orange/lemon confusion dominates. Israeli priorities include both mandarin and orange, so own-collected citrus data is a P0 need.
 3. The overall-accuracy trap is real here. Top-1 of 0.85 hides a class that is recognized one time in three.
 
-Reproducibility: same-seed rerun `p3_repro_commercial_mnv3` → see section below.
+**Reproducibility (acceptance criterion: same seed gives metrics within ±0.5 points): PASS.** The same-seed rerun `p3_repro_commercial_mnv3` reproduced every epoch's loss and validation metrics exactly (val macro-F1 0.9443279 in both runs; identical gate failures).
 
 ## Phase 4 — benchmark matrix (research data; NOT commercially shippable)
 
@@ -65,7 +65,7 @@ Common setup:
 |---|---|---|---|---|---|---|---|
 | P3 baseline (commercial) | Grocery | MobileNetV3-L | **0.839** | 0.787 | 0.32 | 0.904 / 0.62 (full test) | — (classes seen as "other") |
 | R1 | Grocery + Open Images + Fruits-360 | MobileNetV3-L | 0.813 | **0.790** | **0.44** | **0.947** / 0.45 | 0.64 / 89% |
-| R2 | same as R1 | EfficientNet-B0 | see below | | | | |
+| R2 | same as R1 | EfficientNet-B0 | 0.796 | 0.772 | 0.38 | 0.987 / 0.33 | 0.64 / 86% |
 | **R4 cross-dataset** | Open Images + Fruits-360 only | MobileNetV3-L | **0.318** | **0.183** | 0.00 | 0.984 / **0.04** | 0.26 / 90% |
 | R3 (no Fruits-360) | — | — | skipped (CPU budget; R1 vs P3 already answers "does public data help?") | | | | |
 
@@ -73,7 +73,61 @@ Findings:
 1. **Public web and studio data does not transfer to phone photos of real produce (R4).** A model that never saw phone photos gets 32% top-1 on them. The abstention policy keeps shown results 98% correct, but it shows a result for only 4% of scans. That makes the product useless without our own phone-photo data. This is the strongest evidence behind the collection plan in [data-collection-protocol.md](data-collection-protocol.md).
 2. **Adding about 23k public images to Grocery Store (R1 vs P3)** leaves macro-F1 flat (0.790 vs 0.787) and top-1 slightly lower. It helps the worst class (0.44 vs 0.32). It is not worth the licensing cost of Open Images and Fruits-360 for the release.
 3. **OOD detection by logit scores is weak.** AUROC for unseen produce is 0.64–0.69 on in-domain data and inverted under domain shift (R4: 0.26). In practice the app still abstains on about 90% of unseen produce, but mostly because the thresholds are strict, and that also costs coverage. A dedicated OOD approach (e.g. feature-space distance, or training "other" with more diverse negatives) is future work.
-4. **Architecture options A/B/C for ripeness could not be benchmarked**: no ripeness labels exist in usable data. The code supports all three (`ripeness_mode`, `head_weights`).
+4. **Backbone:** EfficientNet-B0 (R2) is no better than MobileNetV3-L (R1) on phone photos (macro-F1 0.772 vs 0.790) and trains about 2× slower on CPU. Its host inference is also slower (22 vs 15 ms, `benchmarks/`). **MobileNetV3-L is selected.**
+5. **Architecture options A/B/C for ripeness could not be benchmarked**: no ripeness labels exist in usable data. The code supports all three (`ripeness_mode`, `head_weights`).
+
+## Phase 4 — commercial track (Grocery Store only, i.e. shippable today) and model selection
+
+The model is selected on **validation** macro-F1; the test set is used only to report the chosen model.
+
+| Run | Backbone / training | val macro-F1 | test top-1 | test macro-F1 | test worst-class recall | test ECE | App: shown / accuracy when shown |
+|---|---|---|---|---|---|---|---|
+| P3 | MobileNetV3-L, first 4 stages frozen | 0.944 | 0.849 | 0.788 | 0.32 | 0.070 | 62% / 0.904 |
+| **C1 (selected)** | MobileNetV3-L, full fine-tune | **0.949** | **0.892** | **0.851** | **0.44** | **0.039** | 63% / 0.930 |
+| C2 | EfficientNet-B0, first 4 stages frozen | 0.945 | 0.898 | 0.845 | 0.42 | 0.056 | 62% / 0.938 |
+
+C1 per-class test recall, worst first:
+
+| Class | Recall |
+|---|---|
+| lemon | 0.44 |
+| mandarin | 0.53 |
+| mango | 0.58 |
+| cucumber | 0.67 |
+| orange | 0.70 |
+| nectarine | 0.77 |
+| kiwi | 0.78 |
+| pomegranate | 0.84 |
+| avocado | 0.85 |
+| plum | 0.86 |
+| melon | 0.88 |
+| watermelon | 0.89 |
+| peach | 0.92 |
+| other | 0.94 |
+| pear | 0.94 |
+| banana | 0.98 |
+| apple | 0.99 |
+| tomato | 1.00 |
+| pepper | 1.00 |
+
+Gate results for C1:
+- **Passes** the macro-F1 gate (0.851 ≥ 0.85).
+- **Fails** the per-class recall gates for 8 classes: citrus, mango, cucumber, nectarine, kiwi, avocado.
+
+## Release candidate `v0.1-dev` (C1)
+
+Produced by `scripts/release_model.sh runs/p4_c1_commercial_mnv3_full/… data/processed_commercial v0.1-dev --allow-gate-failures`.
+
+| Check | Result |
+|---|---|
+| Licence gate: training manifest uses only commercially-cleared data | ✅ Grocery Store (MIT) only |
+| ONNX == PyTorch | ✅ 100% agreement, max logit diff 0.0 |
+| Core ML fp16 | ✅ 8.2 MB (converted; not executed — needs macOS) |
+| Host CPU latency (ONNX, 1 thread) | 4.8 ms p50 (not a phone number) |
+| Acceptance gates on test | ❌ 8 per-class recall failures (see above) → **internal dev build only; NOT releasable to users** |
+| Synced into app | ✅ `app/assets/model/bundle.json`, credits, `ProduceScanner.mlpackage`; app typecheck, 604 tests and iOS bundle pass |
+| End-to-end via self-hosted server (real photos) | ✅ avocado/tomato identified; banana at 0.52 → "unsure"; asparagus → "not produce"; dark photo → "retake"; satsuma → "orange" at 1.00 (known citrus confusion) |
+| Ripeness / freshness / spoilage | Unsupported (no licensed labels). The app shows "not available yet for this type" and the recommendation "check manually" |
 
 ## Phase 5 — validation (stress proxies on the P3 model, Grocery official test, n = 1,704)
 
