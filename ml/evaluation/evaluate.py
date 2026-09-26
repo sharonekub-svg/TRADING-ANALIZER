@@ -112,6 +112,8 @@ def main() -> None:
     ap.add_argument("--exclude-source-regex")
     ap.add_argument("--ood-source-regex", help="rows matching are treated as OOD (unseen produce)")
     ap.add_argument("--stress", choices=["dark", "blur", "jpeg", "warm_light", "occlusion"])
+    ap.add_argument("--save-preds", action="store_true", help="write per-image predictions (<out>.preds.jsonl)")
+    ap.add_argument("--quality-gate", action="store_true", help="run the model-free quality gate first, as the app does")
     ap.add_argument("--tune", action="store_true")
     ap.add_argument("--target-accuracy", type=float, default=0.95)
     ap.add_argument("--out", type=Path)
@@ -141,9 +143,17 @@ def main() -> None:
     if tpath.exists() and not args.tune:
         thr.update({k: v for k, v in json.loads(tpath.read_text()).items() if k != "tuned_on"})
     energy = ood.energy(logits["produce"])
+    qreasons = [None] * len(rows)
+    if args.quality_gate:
+        from ml.inference import quality
+        from ml.preprocessing.image_io import load_rgb
+        st = Stress(args.stress) if args.stress else (lambda im: im)
+        qreasons = [quality.assess(st(load_rgb(args.processed / r["image"]))).reason for r in rows]
+        res["quality_gate_reasons"] = {str(k): qreasons.count(k) for k in set(qreasons)}
     statuses, correct_ok = [], []
     for i in range(len(rows)):
-        r = decide(tax, {h: probs[h][i] for h in HEADS}, sup, energy_score=float(energy[i]), thresholds=thr)
+        r = decide(tax, {h: probs[h][i] for h in HEADS}, sup, quality_reason=qreasons[i],
+                   energy_score=float(energy[i]), thresholds=thr)
         statuses.append(r.status)
         if r.status == "ok" and ind[i] and masks["produce"][i].sum() == 1:
             correct_ok.append(r.produce == tax.produce[int(masks["produce"][i].argmax())])
@@ -177,8 +187,18 @@ def main() -> None:
                               "accuracy_at_threshold": float(corr[conf >= chosen].mean()) if (conf >= chosen).any() else None}}
         tpath.write_text(json.dumps(tuned, indent=2))
         res["tuned_thresholds"] = tuned
+    out_path_preds = None
     out = args.out or args.ckpt.parent / f"eval_{'_'.join(args.splits)}{'_' + args.stress if args.stress else ''}.json"
     out.write_text(json.dumps(res, indent=2))
+    if args.save_preds:
+        with open(out.with_suffix(".preds.jsonl"), "w", encoding="utf-8") as f:
+            for i, r in enumerate(rows):
+                p = probs["produce"][i]
+                top = np.argsort(-p)[:3]
+                f.write(json.dumps({"image": r["image"], "source_path": r["source_path"], "label": r["labels"]["produce"],
+                                    "pred": tax.produce[int(top[0])], "conf": round(float(p[top[0]]), 4),
+                                    "top3": [[tax.produce[int(j)], round(float(p[j]), 4)] for j in top],
+                                    "status": statuses[i], "ood": bool(is_ood[i])}, ensure_ascii=False) + "\n")
     if "produce" in res["heads"]:
         confusion_png(np.array(res["heads"]["produce"]["confusion_matrix"]), list(tax.produce), out.with_suffix(".confusion.png"))
     brief = {k: res["heads"]["produce"][k] for k in ("n", "top1", "macro_f1", "balanced_accuracy", "worst_class_recall", "ece")} if "produce" in res["heads"] else {}

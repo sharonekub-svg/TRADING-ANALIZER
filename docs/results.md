@@ -53,6 +53,62 @@ Findings:
 
 Reproducibility: same-seed rerun `p3_repro_commercial_mnv3` → see section below.
 
+## Phase 4 — benchmark matrix (research data; NOT commercially shippable)
+
+Common setup:
+- `data/processed_research`, 10 epochs × 5,000 class-balanced samples, 224 px, first 4 stages frozen.
+- **12 produce classes are held out entirely** and form the unseen-produce OOD set: asparagus, leek, beet, passion fruit, mushroom, fig, radish, quince, cherimoya, pitahaya, carambola.
+- Thresholds are tuned on validation for 95% accepted accuracy.
+- "Grocery test" = official Grocery Store test minus the held-out classes (n = 1,586): phone photos from store visits not seen in training.
+
+| Run | Training data | Backbone | Grocery test top-1 | macro-F1 | worst-class recall | Shown-result accuracy / coverage | Unseen produce: AUROC (energy) / app abstains |
+|---|---|---|---|---|---|---|---|
+| P3 baseline (commercial) | Grocery | MobileNetV3-L | **0.839** | 0.787 | 0.32 | 0.904 / 0.62 (full test) | — (classes seen as "other") |
+| R1 | Grocery + Open Images + Fruits-360 | MobileNetV3-L | 0.813 | **0.790** | **0.44** | **0.947** / 0.45 | 0.64 / 89% |
+| R2 | same as R1 | EfficientNet-B0 | see below | | | | |
+| **R4 cross-dataset** | Open Images + Fruits-360 only | MobileNetV3-L | **0.318** | **0.183** | 0.00 | 0.984 / **0.04** | 0.26 / 90% |
+| R3 (no Fruits-360) | — | — | skipped (CPU budget; R1 vs P3 already answers "does public data help?") | | | | |
+
+Findings:
+1. **Public web and studio data does not transfer to phone photos of real produce (R4).** A model that never saw phone photos gets 32% top-1 on them. The abstention policy keeps shown results 98% correct, but it shows a result for only 4% of scans. That makes the product useless without our own phone-photo data. This is the strongest evidence behind the collection plan in [data-collection-protocol.md](data-collection-protocol.md).
+2. **Adding about 23k public images to Grocery Store (R1 vs P3)** leaves macro-F1 flat (0.790 vs 0.787) and top-1 slightly lower. It helps the worst class (0.44 vs 0.32). It is not worth the licensing cost of Open Images and Fruits-360 for the release.
+3. **OOD detection by logit scores is weak.** AUROC for unseen produce is 0.64–0.69 on in-domain data and inverted under domain shift (R4: 0.26). In practice the app still abstains on about 90% of unseen produce, but mostly because the thresholds are strict, and that also costs coverage. A dedicated OOD approach (e.g. feature-space distance, or training "other" with more diverse negatives) is future work.
+4. **Architecture options A/B/C for ripeness could not be benchmarked**: no ripeness labels exist in usable data. The code supports all three (`ripeness_mode`, `head_weights`).
+
+## Phase 5 — validation (stress proxies on the P3 model, Grocery official test, n = 1,704)
+
+The Israeli real-world set does not exist yet. These are **synthetic proxies** (`ml/evaluation/evaluate.py --stress`), not a substitute for it.
+
+| Condition | top-1 | macro-F1 | worst-class recall | Quality gate stops | App shows result | Accuracy when shown |
+|---|---|---|---|---|---|---|
+| clean | 0.849 | 0.788 | 0.32 | 8 (0.5%) as blurry | 62% | 0.904 |
+| dark (γ 1.8, ×0.45, noise) | 0.788 | 0.671 | 0.06 | **97% "too dark"** | 1% | 1.00 |
+| blur (σ ≈ 3 px) | 0.803 | 0.732 | 0.37 | **100% "blurry"** | 0% | — |
+| JPEG q20 | 0.842 | 0.776 | 0.34 | — | 61% | 0.891 |
+| warm light (tungsten WB) | 0.829 | 0.750 | 0.11 | — | 62% | 0.871 |
+| occlusion (~25% of frame) | 0.834 | 0.759 | 0.29 | — | 58% | 0.908 |
+
+Findings:
+- The quality gate turns dark and blurry photos into a "retake" prompt instead of a wrong answer. The blur threshold is conservative: the model still gets 80% of those blurred images right, so it should be retuned on real phone photos.
+- **Warm light is the dangerous case.** It passes the gate, drops the worst class to 0.11, and lowers shown-result accuracy to 0.87. Colour-cast photos must be in our collection matrix (evening kitchen light).
+
+**Hard examples** (`scripts/mine_hard_examples.py`):
+- 257 errors on test, 101 of which would be shown to users.
+- Top confusions:
+
+  | True → predicted | Count |
+  |---|---|
+  | mandarin → orange | 38 |
+  | nectarine → apple | 21 |
+  | lemon → other | 21 |
+  | kiwi → other | 15 |
+  | avocado → other | 14 |
+
+- Most of these have 0.97–1.00 confidence, so no threshold can catch them.
+- Two causes:
+  - The "other" class contains lookalikes (passion fruit, lime, grapefruit, potato) that absorb real target produce. Negatives should not be near-duplicates of targets.
+  - Shelf photos show several products under a single label.
+
 ## Phase 6 — export and quantization (baseline model)
 
 See [mobile.md](mobile.md). ONNX fp32 matches PyTorch exactly. Static int8 loses 6 points of top-1 and is rejected. **Core ML fp16 (8.2 MB) is chosen**, with 99.9% agreement.
